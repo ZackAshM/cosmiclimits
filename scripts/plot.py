@@ -22,6 +22,7 @@ from data.crpropa_runtime import ensure_crpropa_data_path
 from cosmiclimits.horizon import cumulative_observable_distance_mpc, horizon_redshift, make_redshift_grid
 from cosmiclimits.photon.double_pair_production import rate_table as photon_double_pair_rate_table
 from cosmiclimits.photon.pair_production import rate_table as photon_pair_rate_table
+from cosmiclimits.proton.electron_pair_production import loss_rate_table as proton_pair_loss_rate_table
 from cosmiclimits.proton.photopion import rate_table as proton_photopion_rate_table
 from cosmiclimits.utils import TabulatedRate, static_length_mpc
 
@@ -59,6 +60,8 @@ def compute_curves() -> dict[str, np.ndarray]:
 
     print("building proton CRPropa rate tables", flush=True)
     proton_photopion = proton_photopion_rate_table(proton_energy_grid)
+    proton_pair_loss = proton_pair_loss_rate_table(proton_energy_grid)
+    proton_total = combine_rates(proton_photopion, proton_pair_loss)
 
     z_grid = make_redshift_grid(40.0, count=1000)
     distance_grid = cumulative_observable_distance_mpc(z_grid)
@@ -67,9 +70,9 @@ def compute_curves() -> dict[str, np.ndarray]:
     photon_z = np.array(
         [horizon_redshift(energy, photon_total, 40.0, z_grid) for energy in photon_energy_grid]
     )
-    print("solving proton photopion horizon", flush=True)
-    proton_photopion_z = np.array(
-        [horizon_redshift(energy, proton_photopion, 40.0, z_grid) for energy in proton_energy_grid]
+    print("solving proton horizon", flush=True)
+    proton_z = np.array(
+        [horizon_redshift(energy, proton_total, 40.0, z_grid) for energy in proton_energy_grid]
     )
     return {
         "photon_energy_ev": photon_energy_grid,
@@ -80,10 +83,12 @@ def compute_curves() -> dict[str, np.ndarray]:
         "photon_double_pair_rate_mpc": photon_double_pair.rates_per_mpc,
         "photon_total_rate_mpc": photon_total.rates_per_mpc,
         "proton_energy_ev": proton_energy_grid,
-        "proton_photopion_z": proton_photopion_z,
-        "proton_photopion_distance_mpc": np.interp(proton_photopion_z, z_grid, distance_grid),
-        "proton_photopion_static_distance_mpc": static_length_mpc(proton_photopion.rates_per_mpc),
+        "proton_z": proton_z,
+        "proton_distance_mpc": np.interp(proton_z, z_grid, distance_grid),
+        "proton_static_distance_mpc": static_length_mpc(proton_total.rates_per_mpc),
         "proton_photopion_rate_mpc": proton_photopion.rates_per_mpc,
+        "proton_pair_loss_rate_mpc": proton_pair_loss.rates_per_mpc,
+        "proton_total_rate_mpc": proton_total.rates_per_mpc,
     }
 
 
@@ -120,16 +125,12 @@ def plot_mpc(curves: dict[str, np.ndarray], output_path: Path) -> None:
     photon_y = np.log10(curves["photon_energy_ev"])
     proton_y = np.log10(curves["proton_energy_ev"])
     photon_x = np.log10(np.clip(curves["photon_distance_mpc"], 1.0e-3, 10.0**4.6))
-    proton_photopion_x = np.log10(
-        np.clip(curves["proton_photopion_distance_mpc"], 1.0e-3, 10.0**4.6)
-    )
+    proton_x = np.log10(np.clip(curves["proton_distance_mpc"], 1.0e-3, 10.0**4.6))
 
     photon_static_x = np.log10(
         np.clip(curves["photon_static_distance_mpc"], 1.0e-3, 10.0**4.6)
     )
-    proton_photopion_static_x = np.log10(
-        np.clip(curves["proton_photopion_static_distance_mpc"], 1.0e-3, 10.0**4.6)
-    )
+    proton_static_x = np.log10(np.clip(curves["proton_static_distance_mpc"], 1.0e-3, 10.0**4.6))
 
     ax.fill_betweenx(
         photon_y,
@@ -152,7 +153,7 @@ def plot_mpc(curves: dict[str, np.ndarray], output_path: Path) -> None:
     )
     ax.fill_betweenx(
         proton_y,
-        proton_photopion_x,
+        proton_x,
         4.6,
         facecolor="red",
         edgecolor="none",
@@ -161,7 +162,7 @@ def plot_mpc(curves: dict[str, np.ndarray], output_path: Path) -> None:
     )
     ax.fill_betweenx(
         proton_y,
-        proton_photopion_x,
+        proton_x,
         4.6,
         facecolor="none",
         hatch="\\",
@@ -172,7 +173,7 @@ def plot_mpc(curves: dict[str, np.ndarray], output_path: Path) -> None:
 
     ax.plot(photon_static_x, photon_y, color="blue", linewidth=2.0, linestyle=(0, (5, 3)), alpha=0.78)
     ax.plot(
-        proton_photopion_static_x,
+        proton_static_x,
         proton_y,
         color="red",
         linewidth=1.8,
@@ -187,7 +188,7 @@ def plot_mpc(curves: dict[str, np.ndarray], output_path: Path) -> None:
         label=r"$\gamma\gamma \rightarrow e^+e^-,\;\gamma\gamma \rightarrow 2(e^+e^-)$",
     )
     ax.plot(
-        proton_photopion_x,
+        proton_x,
         proton_y,
         color="red",
         linewidth=2.4,
@@ -219,7 +220,7 @@ def plot_redshift(curves: dict[str, np.ndarray], output_path: Path) -> None:
     photon_y = np.log10(curves["photon_energy_ev"])
     proton_y = np.log10(curves["proton_energy_ev"])
     photon_x = np.log10(np.clip(curves["photon_z"], 1.0e-7, 10.0**4.0))
-    proton_photopion_x = np.log10(np.clip(curves["proton_photopion_z"], 1.0e-7, 10.0**4.0))
+    proton_x = np.log10(np.clip(curves["proton_z"], 1.0e-7, 10.0**4.0))
 
     ax.fill_betweenx(
         photon_y,
@@ -242,7 +243,7 @@ def plot_redshift(curves: dict[str, np.ndarray], output_path: Path) -> None:
     )
     ax.fill_betweenx(
         proton_y,
-        proton_photopion_x,
+        proton_x,
         4.0,
         facecolor="red",
         edgecolor="none",
@@ -251,7 +252,7 @@ def plot_redshift(curves: dict[str, np.ndarray], output_path: Path) -> None:
     )
     ax.fill_betweenx(
         proton_y,
-        proton_photopion_x,
+        proton_x,
         4.0,
         facecolor="none",
         hatch="\\",
@@ -267,7 +268,7 @@ def plot_redshift(curves: dict[str, np.ndarray], output_path: Path) -> None:
         label=r"$\gamma\gamma \rightarrow e^+e^-,\;\gamma\gamma \rightarrow 2(e^+e^-)$",
     )
     ax.plot(
-        proton_photopion_x,
+        proton_x,
         proton_y,
         color="red",
         linewidth=2.3,
@@ -301,11 +302,11 @@ def write_curve_table(curves: dict[str, np.ndarray], output_path: Path) -> None:
         rows.append(f"photon,total_absorption,{energy:.8e},{redshift:.8e},{distance:.8e},{static_distance:.8e}")
     for energy, redshift, distance, static_distance in zip(
         curves["proton_energy_ev"],
-        curves["proton_photopion_z"],
-        curves["proton_photopion_distance_mpc"],
-        curves["proton_photopion_static_distance_mpc"],
+        curves["proton_z"],
+        curves["proton_distance_mpc"],
+        curves["proton_static_distance_mpc"],
     ):
-        rows.append(f"proton,photopion_mfp,{energy:.8e},{redshift:.8e},{distance:.8e},{static_distance:.8e}")
+        rows.append(f"proton,total_horizon,{energy:.8e},{redshift:.8e},{distance:.8e},{static_distance:.8e}")
     output_path.write_text("\n".join(rows) + "\n", encoding="utf-8")
 
 
