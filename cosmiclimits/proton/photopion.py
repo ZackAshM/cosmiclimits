@@ -3,7 +3,7 @@ from pathlib import Path
 import numpy as np
 
 from data.crpropa_runtime import CRPROPA_DATA_DIR, import_crpropa_data_module
-from cosmiclimits.proton.backgrounds import selected_photon_fields
+from cosmiclimits.backgrounds import selected_photon_fields
 from cosmiclimits.proton.proton_constants import PHOTOPION_REGRID_EXPONENT
 from cosmiclimits.utils import TabulatedRate, load_or_build_rate_table
 
