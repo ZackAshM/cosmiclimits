@@ -1,0 +1,3 @@
+[submodule "data/CRPropa3-data"]
+	path = data/CRPropa3-data
+	url = https://github.com/CRPropa/CRPropa3-data.git

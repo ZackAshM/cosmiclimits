@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cosmiclimits"
+version = "0.1.0"
+description = "CRPropa-data-backed photon and proton cosmic particle horizon plots."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "matplotlib",
+    "numpy",
+    "pandas",
+    "scipy",
+]
+
+[tool.setuptools]
+packages = ["cosmiclimits", "cosmiclimits.photon", "cosmiclimits.proton", "data"]
