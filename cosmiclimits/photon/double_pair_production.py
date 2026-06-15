@@ -1,6 +1,6 @@
 import numpy as np
 
-from cosmiclimits.photon.backgrounds import selected_photon_fields
+from cosmiclimits.backgrounds import selected_photon_fields
 from cosmiclimits.photon.crpropa_electromagnetic import electromagnetic_rate_per_mpc
 from cosmiclimits.utils import TabulatedRate, load_or_build_rate_table
 

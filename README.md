@@ -146,6 +146,7 @@ Plot results are written inside `output/`:
 Modules:
 
 - `data/crpropa_runtime.py`: registers the local CRPropa3-data checkout and imports CRPropa data-generation modules.
+- `cosmiclimits/backgrounds.py`: selects the shared CRPropa photon background fields.
 - `cosmiclimits/photon/`: wraps CRPropa photon pair-production and double-pair-production rate calculations.
 - `cosmiclimits/proton/`: wraps CRPropa proton photopion and electron-pair-production calculations.
 - `cosmiclimits/nuclei/`: wraps CRPropa Fe-56 photodisintegration and elastic-scattering calculations.
