@@ -1,7 +1,7 @@
 import numpy as np
 
 from data.crpropa_runtime import import_crpropa_data_module
-from cosmiclimits.nuclei.backgrounds import selected_photon_fields
+from cosmiclimits.backgrounds import selected_photon_fields
 from cosmiclimits.nuclei.iron import iron_lorentz_factor
 from cosmiclimits.nuclei.nuclei_constants import IRON_N, IRON_Z
 from cosmiclimits.utils import TabulatedRate, load_or_build_rate_table
@@ -37,4 +37,3 @@ def rate_table(energies_ev: np.ndarray) -> TabulatedRate:
         return total
 
     return load_or_build_rate_table("iron_photodisintegration_fe56", energies, build)
-

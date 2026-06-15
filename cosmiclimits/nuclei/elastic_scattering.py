@@ -1,7 +1,7 @@
 import numpy as np
 
 from data.crpropa_runtime import CRPROPA_DATA_DIR, import_crpropa_data_module
-from cosmiclimits.nuclei.backgrounds import selected_photon_fields
+from cosmiclimits.backgrounds import selected_photon_fields
 from cosmiclimits.nuclei.iron import iron_lorentz_factor
 from cosmiclimits.nuclei.nuclei_constants import IRON_A, IRON_N, IRON_Z
 from cosmiclimits.utils import TabulatedRate, load_or_build_rate_table
