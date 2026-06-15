@@ -34,6 +34,7 @@ TICK_LABEL_SIZE = 12
 TITLE_SIZE = 18
 LEGEND_SIZE = 12.5
 IRON_COLOR = "darkorange"
+IRON_FILL_ALPHA = 0.05
 IRON_LINESTYLE = "-."
 
 
@@ -48,6 +49,26 @@ def combine_rates(*tables: TabulatedRate) -> TabulatedRate:
             raise ValueError("Cannot combine tables sampled on different energy grids.")
         total += table.rates_per_mpc
     return TabulatedRate(energies, total)
+
+
+def comparison_horizon_envelope(
+    reference_energy_log: np.ndarray,
+    comparison_curves: tuple[tuple[np.ndarray, np.ndarray], ...],
+) -> np.ndarray:
+    '''
+    Interpolate comparison horizons onto a reference energy grid and return the leftmost one.
+    '''
+    envelope = np.full_like(reference_energy_log, np.inf, dtype=float)
+    for comparison_energy_log, comparison_horizon_log in comparison_curves:
+        comparison_on_reference = np.interp(
+            reference_energy_log,
+            comparison_energy_log,
+            comparison_horizon_log,
+            left=np.nan,
+            right=np.nan,
+        )
+        envelope = np.fmin(envelope, comparison_on_reference)
+    return envelope
 
 
 def compute_curves() -> dict[str, np.ndarray]:
@@ -163,7 +184,7 @@ def plot_mpc(curves: dict[str, np.ndarray], output_path: Path) -> None:
         facecolor="blue",
         edgecolor="none",
         linewidth=0.0,
-        alpha=0.02,
+        alpha=0.04,
     )
     ax.fill_betweenx(
         photon_y,
@@ -173,7 +194,7 @@ def plot_mpc(curves: dict[str, np.ndarray], output_path: Path) -> None:
         hatch="/",
         edgecolor="royalblue",
         linewidth=0.0,
-        alpha=0.60,
+        alpha=0.20,
     )
     ax.fill_betweenx(
         proton_y,
@@ -182,7 +203,7 @@ def plot_mpc(curves: dict[str, np.ndarray], output_path: Path) -> None:
         facecolor="red",
         edgecolor="none",
         linewidth=0.0,
-        alpha=0.02,
+        alpha=0.04,
     )
     ax.fill_betweenx(
         proton_y,
@@ -192,7 +213,38 @@ def plot_mpc(curves: dict[str, np.ndarray], output_path: Path) -> None:
         hatch="\\",
         edgecolor="red",
         linewidth=0.0,
-        alpha=0.42,
+        alpha=0.2,
+    )
+    comparison_envelope = comparison_horizon_envelope(
+        iron_y,
+        (
+            (photon_y, photon_x),
+            (proton_y, proton_x),
+        ),
+    )
+    iron_dominant = iron_x < comparison_envelope
+    ax.fill_betweenx(
+        iron_y,
+        iron_x,
+        comparison_envelope,
+        where=iron_dominant,
+        interpolate=True,
+        facecolor=IRON_COLOR,
+        edgecolor="none",
+        linewidth=0.0,
+        alpha=IRON_FILL_ALPHA,
+    )
+    ax.fill_betweenx(
+        iron_y,
+        iron_x,
+        comparison_envelope,
+        where=iron_dominant,
+        interpolate=True,
+        facecolor="none",
+        hatch="\\",
+        edgecolor="darkorange",
+        linewidth=0.0,
+        alpha=0.2,
     )
 
     ax.plot(photon_static_x, photon_y, color="blue", linewidth=2.0, linestyle=(0, (5, 3)), alpha=0.78)
@@ -238,6 +290,7 @@ def plot_mpc(curves: dict[str, np.ndarray], output_path: Path) -> None:
     add_record_lines(ax, label_x=3.0)
     ax.text(3.2, 23.0, "protons", color="red", fontsize=15, ha="center", bbox=LABEL_BOX)
     ax.text(0.5, 17.0, "photons", color="blue", fontsize=15, ha="center", bbox=LABEL_BOX)
+    ax.text(-0.2, 21.3, "iron", color="darkorange", fontsize=15, ha="center", bbox=LABEL_BOX)
 
     ax.set_xlabel(r"$\log_{10}$(Observable distance / Mpc)", fontsize=AXIS_LABEL_SIZE)
     ax.set_ylabel(r"$\log_{10}$(particle energy / eV)", fontsize=AXIS_LABEL_SIZE)
@@ -246,7 +299,7 @@ def plot_mpc(curves: dict[str, np.ndarray], output_path: Path) -> None:
     handles, labels = ax.get_legend_handles_labels()
     handles.append(Line2D([0], [0], color="black", linewidth=2.0, linestyle=(0, (5, 3))))
     labels.append("No Redshift Evolution")
-    ax.legend(handles, labels, loc="upper left", fontsize=LEGEND_SIZE, framealpha=0.82, facecolor="white", edgecolor="none")
+    ax.legend(handles, labels, loc="lower left", fontsize=LEGEND_SIZE, framealpha=0.82, facecolor="white", edgecolor="none")
     fig.savefig(output_path, dpi=220)
     plt.close(fig)
 
@@ -271,7 +324,7 @@ def plot_redshift(curves: dict[str, np.ndarray], output_path: Path) -> None:
         facecolor="blue",
         edgecolor="none",
         linewidth=0.0,
-        alpha=0.02,
+        alpha=0.04,
     )
     ax.fill_betweenx(
         photon_y,
@@ -281,7 +334,7 @@ def plot_redshift(curves: dict[str, np.ndarray], output_path: Path) -> None:
         hatch="/",
         edgecolor="royalblue",
         linewidth=0.0,
-        alpha=0.56,
+        alpha=0.3,
     )
     ax.fill_betweenx(
         proton_y,
@@ -290,7 +343,7 @@ def plot_redshift(curves: dict[str, np.ndarray], output_path: Path) -> None:
         facecolor="red",
         edgecolor="none",
         linewidth=0.0,
-        alpha=0.02,
+        alpha=0.04,
     )
     ax.fill_betweenx(
         proton_y,
@@ -300,7 +353,38 @@ def plot_redshift(curves: dict[str, np.ndarray], output_path: Path) -> None:
         hatch="\\",
         edgecolor="red",
         linewidth=0.0,
-        alpha=0.42,
+        alpha=0.2,
+    )
+    comparison_envelope = comparison_horizon_envelope(
+        iron_y,
+        (
+            (photon_y, photon_x),
+            (proton_y, proton_x),
+        ),
+    )
+    iron_dominant = iron_x < comparison_envelope
+    ax.fill_betweenx(
+        iron_y,
+        iron_x,
+        comparison_envelope,
+        where=iron_dominant,
+        interpolate=True,
+        facecolor=IRON_COLOR,
+        edgecolor="none",
+        linewidth=0.0,
+        alpha=IRON_FILL_ALPHA,
+    )
+    ax.fill_betweenx(
+        iron_y,
+        iron_x,
+        comparison_envelope,
+        where=iron_dominant,
+        interpolate=True,
+        facecolor="none",
+        hatch="\\",
+        edgecolor="darkorange",
+        linewidth=0.0,
+        alpha=0.2,
     )
     ax.plot(
         photon_x,
@@ -326,14 +410,15 @@ def plot_redshift(curves: dict[str, np.ndarray], output_path: Path) -> None:
     )
 
     add_record_lines(ax, label_x=0.0)
-    ax.text(-2.0, 17.5, "photons", color="blue", fontsize=15, ha="center", bbox=LABEL_BOX)
+    ax.text(-3.0, 17.0, "photons", color="blue", fontsize=15, ha="center", bbox=LABEL_BOX)
     ax.text(0.5, 23.0, "protons", color="red", fontsize=15, ha="center", bbox=LABEL_BOX)
+    ax.text(-3.8, 21.3, "iron", color="darkorange", fontsize=15, ha="center", bbox=LABEL_BOX)
 
     ax.set_xlabel(r"$\log_{10}$(Source redshift)", fontsize=AXIS_LABEL_SIZE)
     ax.set_ylabel(r"$\log_{10}$(particle energy / eV)", fontsize=AXIS_LABEL_SIZE)
     ax.set_title("Particle Horizon Limits", fontsize=TITLE_SIZE)
     ax.tick_params(which="both", direction="in", top=True, right=True, labelsize=TICK_LABEL_SIZE)
-    ax.legend(loc="upper left", fontsize=LEGEND_SIZE, framealpha=0.82, facecolor="white", edgecolor="none")
+    ax.legend(loc="lower left", fontsize=LEGEND_SIZE, framealpha=0.82, facecolor="white", edgecolor="none")
     fig.savefig(output_path, dpi=220)
     plt.close(fig)
 
