@@ -7,9 +7,9 @@
   </tr>
 </table>
 
-This package creates cosmic propagation limits, or horizons, plots for particles interacting with cosmological thermal backgrounds (e.g. CMB).
+This package creates cosmic propagation limits, or horizons, plots for particles interacting with cosmological thermal backgrounds (e.g. CMB and CνB).
 
-The physics backend for photon and cosmic ray processes is built from [CRPropa3-data](https://github.com/CRPropa/CRPropa3-data). Local code is limited to selecting CRPropa photon-background models, wrapping CRPropa interaction-rate calculators, solving the depth-equals-one horizon condition, and plotting the results.
+The physics backend for photon and cosmic-ray processes is built from [CRPropa3-data](https://github.com/CRPropa/CRPropa3-data). Neutrino absorption is implemented separately from the analytic approximation used by [Ruffini, Vereshchagin, and Xue](https://arxiv.org/pdf/1503.07749), following [Lunardini, Sabancilar, and Yang](https://arxiv.org/pdf/1306.1808) for the underlying CνB absorption formalism.
 
 ## Defining Particle Horizons
 
@@ -52,6 +52,19 @@ $$\mathcal{H}(z) = [\Omega_r(1+z)^4 + \Omega_M(1+z)^3 + \Omega_\Lambda]^{1/2}$$
 
 In this implementation, $\Gamma(E)$ is evaluated from local CRPropa rate tables and scaled by the background-density factor $(1+z)^3$; the shifted argument $E_0(1+z')^2$ reflects the combined redshifting of the propagating particle and background energy scales.
 
+For the neutrino horizon, Ruffini et al. use the CνB number-density scaling and the at-rest CνB approximation,
+
+$$
+\tau_{\nu\bar{\nu}}(E_0,z_h)
+=
+n_{0,\nu}D_H
+\int_0^{z_h}
+\sigma_{\nu\bar{\nu}}\!\left(E_0(1+z')\right)
+\frac{(1+z')^2\,dz'}{\mathcal{H}(z')}.
+$$
+
+This differs from the CRPropa photon/proton/nuclei scaling because the target is the relic neutrino background and the Ruffini implementation evaluates the beam energy as $E'=E_0(1+z')$.
+
 For interactions where the primary particle is not annihilated and does not lose a significant fraction of its energy in a single interaction, the mean free path is not itself the appropriate horizon scale. Ruffini et al. instead define a mean energy-loss distance,
 
 $$
@@ -79,11 +92,12 @@ $$
 - Pair production: `γγ → e⁺e⁻`
 - Double pair production: `γγ → 2(e⁺e⁻)`
 
-Both photon processes remove the primary photon, so the photon horizon uses the sum of the two CRPropa-derived absorption rates.
+Both photon processes remove the primary photon; the photon horizon uses the sum of the two CRPropa-derived absorption rates.
 
 ### Protons
 
 - Photopion production: `pγ → Δ⁺ → pπ⁰ / nπ⁺`
+- Pair production: `pγ → pe⁺e⁻`
 
 The neutral pion channel produces photon secondaries through `π⁰ → γγ`; the charged pion channel produces leptonic and neutrino secondaries through the usual pion/muon decay chain. The proton curve includes the photopion interaction mean-free-path contribution and the electron-pair-production mean energy-loss contribution.
 
@@ -94,15 +108,29 @@ The neutral pion channel produces photon secondaries through `π⁰ → γγ`; t
 
 The iron curve is an Fe-56 interaction horizon built from CRPropa3-data nuclear tables. Photodisintegration changes the nuclear species directly; elastic scattering is included as an additional interaction-depth contribution for the iron line.
 
+### Neutrinos
+
+- Resonant annihilation: `νν̄ → Z⁰ → f f̄`
+- Non-resonant scattering: smooth high-energy `νν̄` contribution
+
+The neutrino curve is shown only in the redshift plot. It follows Ruffini et al.'s analytic implementation with the reference neutrino mass `mν = 0.08 eV`, CνB density scaling, the small-momentum Breit-Wigner resonance approximation, and the non-resonant high-energy approximation.
+
 ## Model Choices
 
 - CRPropa data source: local checkout of `CRPropa3-data`.
 - Photon backgrounds: `CMB`, `EBL_Saldana21`, and `URB_Fixsen11`.
-- Photon interaction grid: CRPropa electromagnetic cross sections sampled on a `2^18 + 1` Romberg grid, with a field-aware upper `s_kin` bound that extends beyond CRPropa's default when required by the plotted energy range.
+- Photon interaction grid: CRPropa electromagnetic cross sections sampled on a `2^18 + 1` Romberg grid, with a field-aware upper `s_kin` bound that extends beyond CRPropa's default to energy range to `10^25 eV`.
 - Proton photopion cross section: full shipped `tables/PPP/xs_proton.txt` table, regridded to `2^12 + 1` log-spaced samples for CRPropa's Romberg integration.
 - Iron nucleus: Fe-56 uses CRPropa3-data TALYS photodisintegration and elastic-scattering tables.
-- Particle energy ranges: photons use `10^10` to `10^25 eV`; protons and iron use `10^17` to `10^25 eV`.
-- Horizon integration range: redshift integration uses `z_max = 40`.
+- Neutrino absorption: Ruffini et al. derivation - `mν = 0.08 eV`, `nCνB = 112 cm⁻³`, resonant Eq. 2.12 and non-resonant Eq. 2.14 from Ruffini et al.; thermal CνB momentum convolution from Lunardini et al. is documented but not included.
+- Particle energy ranges: photons use `10^10` to `10^25 eV`; protons, iron, and neutrinos use `10^17` to `10^25 eV`.
+- Horizon integration range: photon/proton/iron redshift integration uses `z_max = 40`; neutrino integration uses `z_max = 3000`.
+
+## Record Energy Observations
+
+- Cosmic-ray/proton proxy: Fly's Eye "Oh-My-God" event, $320 \pm 90$ EeV; primary identity is not uniquely proton (Bird et al. 1995, https://doi.org/10.1086/175845)
+- Photon: LHAASO Cygnus X-3 candidate spectrum extending to about $3.73 \pm 0.41$ PeV, used as the latest high-energy gamma-ray line (LHAASO Collaboration 2025, https://arxiv.org/abs/2512.16638)
+- Neutrino: KM3NeT event `KM3-230213A`, approximate neutrino energy $220^{+570}_{-110}$ PeV (KM3NeT Collaboration 2025, https://doi.org/10.1038/s41586-024-08543-1)
 
 ## Install
 
@@ -150,6 +178,7 @@ Modules:
 - `cosmiclimits/photon/`: wraps CRPropa photon pair-production and double-pair-production rate calculations.
 - `cosmiclimits/proton/`: wraps CRPropa proton photopion and electron-pair-production calculations.
 - `cosmiclimits/nuclei/`: wraps CRPropa Fe-56 photodisintegration and elastic-scattering calculations.
+- `cosmiclimits/neutrino/`: implements analytic UHE neutrino absorption on the CνB following Ruffini et al.
 - `cosmiclimits/horizon.py`: solves the depth-equals-one horizon condition and converts redshift to observable distance.
 - `cosmiclimits/utils.py`: stores/interpolates generated rate tables.
 - `scripts/plot.py`: computes the curves, draws figures, and writes the CSV table.
