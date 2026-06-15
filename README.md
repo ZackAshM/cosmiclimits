@@ -85,7 +85,14 @@ Both photon processes remove the primary photon, so the photon horizon uses the 
 
 - Photopion production: `pγ → Δ⁺ → pπ⁰ / nπ⁺`
 
-The neutral pion channel produces photon secondaries through `π⁰ → γγ`; the charged pion channel produces leptonic and neutrino secondaries through the usual pion/muon decay chain. This plot treats the proton curve as a photopion interaction mean-free-path horizon. Proton electron-pair-production energy losses are implemented in `proton/electron_pair_production.py` for comparison work, but they are not included in these primary plots.
+The neutral pion channel produces photon secondaries through `π⁰ → γγ`; the charged pion channel produces leptonic and neutrino secondaries through the usual pion/muon decay chain. The proton curve includes the photopion interaction mean-free-path contribution and the electron-pair-production mean energy-loss contribution.
+
+### Iron Nuclei
+
+- Photodisintegration: `⁵⁶Fe + γ → nuclear fragments`
+- Elastic scattering: `⁵⁶Fe + γ → ⁵⁶Fe + γ`
+
+The iron curve is an Fe-56 interaction horizon built from CRPropa3-data nuclear tables. Photodisintegration changes the nuclear species directly; elastic scattering is included as an additional interaction-depth contribution for the iron line.
 
 ## Model Choices
 
@@ -93,7 +100,8 @@ The neutral pion channel produces photon secondaries through `π⁰ → γγ`; t
 - Photon backgrounds: `CMB`, `EBL_Saldana21`, and `URB_Fixsen11`.
 - Photon interaction grid: CRPropa electromagnetic cross sections sampled on a `2^18 + 1` Romberg grid, with a field-aware upper `s_kin` bound that extends beyond CRPropa's default when required by the plotted energy range.
 - Proton photopion cross section: full shipped `tables/PPP/xs_proton.txt` table, regridded to `2^12 + 1` log-spaced samples for CRPropa's Romberg integration.
-- Particle energy ranges: photons use `10^10` to `10^25 eV`; protons use `10^17` to `10^25 eV`.
+- Iron nucleus: Fe-56 uses CRPropa3-data TALYS photodisintegration and elastic-scattering tables.
+- Particle energy ranges: photons use `10^10` to `10^25 eV`; protons and iron use `10^17` to `10^25 eV`.
 - Horizon integration range: redshift integration uses `z_max = 40`.
 
 ## Install
@@ -140,6 +148,7 @@ Modules:
 - `data/crpropa_runtime.py`: registers the local CRPropa3-data checkout and imports CRPropa data-generation modules.
 - `cosmiclimits/photon/`: wraps CRPropa photon pair-production and double-pair-production rate calculations.
 - `cosmiclimits/proton/`: wraps CRPropa proton photopion and electron-pair-production calculations.
+- `cosmiclimits/nuclei/`: wraps CRPropa Fe-56 photodisintegration and elastic-scattering calculations.
 - `cosmiclimits/horizon.py`: solves the depth-equals-one horizon condition and converts redshift to observable distance.
 - `cosmiclimits/utils.py`: stores/interpolates generated rate tables.
 - `scripts/plot.py`: computes the curves, draws figures, and writes the CSV table.
