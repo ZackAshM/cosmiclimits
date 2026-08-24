@@ -250,7 +250,7 @@ def plot_mpc(curves: dict[str, np.ndarray], output_path: Path) -> None:
     comparison_envelope = comparison_horizon_envelope(
         iron_y,
         (
-            (photon_y, photon_x),
+#             (photon_y, photon_x),
             (proton_y, proton_x),
         ),
     )
@@ -329,7 +329,7 @@ def plot_mpc(curves: dict[str, np.ndarray], output_path: Path) -> None:
     add_record_lines([RECORDS["photon"], RECORDS["cosmicray"]], ax, label_x=3.0)
     ax.text(3.2, 23.0, "protons", color="red", fontsize=15, ha="center", bbox=LABEL_BOX)
     ax.text(0.5, 17.0, "photons", color="blue", fontsize=15, ha="center", bbox=LABEL_BOX)
-    ax.text(-0.2, 21.3, "iron", color="darkorange", fontsize=15, ha="center", bbox=LABEL_BOX)
+    ax.text(-0.5, 21.3, "iron", color="darkorange", fontsize=15, ha="center", bbox=LABEL_BOX)
 
     ax.set_xlabel(r"$\log_{10}$(Observable distance / Mpc)", fontsize=AXIS_LABEL_SIZE)
     ax.set_ylabel(r"$\log_{10}$(particle energy / eV)", fontsize=AXIS_LABEL_SIZE)
@@ -399,7 +399,7 @@ def plot_redshift(curves: dict[str, np.ndarray], output_path: Path) -> None:
     comparison_envelope = comparison_horizon_envelope(
         iron_y,
         (
-            (photon_y, photon_x),
+#             (photon_y, photon_x),
             (proton_y, proton_x),
         ),
     )
@@ -480,7 +480,7 @@ def plot_redshift(curves: dict[str, np.ndarray], output_path: Path) -> None:
     add_record_lines([RECORDS["neutrino"]], ax, label_x=2.0)
     ax.text(-3.7, 16.2, "photons", color="blue", fontsize=15, ha="center", bbox=LABEL_BOX)
     ax.text(-0.5, 23.0, "protons", color="red", fontsize=15, ha="center", bbox=LABEL_BOX)
-    ax.text(-3.8, 21.3, "iron", color="darkorange", fontsize=15, ha="center", bbox=LABEL_BOX)
+    ax.text(-4.1, 21.3, "iron", color="darkorange", fontsize=15, ha="center", bbox=LABEL_BOX)
     ax.text(2.6, 21.5, "neutrinos", color=NEUTRINO_COLOR, fontsize=15, ha="center", bbox=LABEL_BOX)
 
     ax.set_xlabel(r"$\log_{10}$(Source redshift)", fontsize=AXIS_LABEL_SIZE)
