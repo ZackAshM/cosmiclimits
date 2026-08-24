@@ -7,7 +7,7 @@
   </tr>
 </table>
 
-This package creates cosmic propagation limits, or horizons, plots for particles interacting with cosmological thermal backgrounds (e.g. CMB and CνB).
+This package creates plots for cosmic propagation limits, or horizons, from particles interacting with cosmological thermal backgrounds (e.g. CMB and CνB). The plot form-factors follow the form of cosmic horizon plots produced by Peter Gorham (I cannot find an original publication of the figure, however several sources in ultrahigh energy neutrinos including the plot give courtesy to Peter Gorham).
 
 The physics backend for photon and cosmic-ray processes is built from [CRPropa3-data](https://github.com/CRPropa/CRPropa3-data). Neutrino absorption is implemented separately from the analytic approximation used by [Ruffini, Vereshchagin, and Xue](https://arxiv.org/pdf/1503.07749), following [Lunardini, Sabancilar, and Yang](https://arxiv.org/pdf/1306.1808) for the underlying CνB absorption formalism.
 
@@ -182,3 +182,10 @@ Modules:
 - `cosmiclimits/horizon.py`: solves the depth-equals-one horizon condition and converts redshift to observable distance.
 - `cosmiclimits/utils.py`: stores/interpolates generated rate tables.
 - `scripts/plot.py`: computes the curves, draws figures, and writes the CSV table.
+
+
+## AI-Usage Disclaimer
+
+The code packaged here is generated using OpenAI’s Codex, with human review from myself (Zachary Martin). I heavily orchestrated the physics backend decisions, including the choice for defining a “horizon” based on energy-loss depth that could include expansion (redshift) effects, as well as which thermal models to include. I have included, in this README, all physics decisions made here in order to make interpretation of the results as clear as possible. The project organization is also orchestrated by myself, including the structure of submodules, and code documentation. 
+
+Codex was used to write wrappers for interaction-table generation + calculated propagation rates of interactions using the CRPropa3-data package, and for writing computational versions of the equations presented in Ruffini et al. 
