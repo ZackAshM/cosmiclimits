@@ -16,6 +16,8 @@ def selected_photon_fields(
         fields.append(photon_field.CMB())
     if include_ebl:
         fields.append(photon_field.EBL_Saldana21())
+#         fields.append(photon_field.EBL_Finke22())
     if include_radio:
-        fields.append(photon_field.URB_Fixsen11())
+#         fields.append(photon_field.URB_Fixsen11())
+        fields.append(photon_field.URB_Nitu21())
     return fields

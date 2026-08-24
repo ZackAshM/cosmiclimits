@@ -22,4 +22,5 @@ def loss_rate_table(energies_ev: np.ndarray) -> TabulatedRate:
             total += pair_production.lossRate(gamma, field)[0]
         return total
 
-    return load_or_build_rate_table("proton_electron_pair_production_loss", energies, build)
+    field_names = "_".join([f.name for f in selected_photon_fields(include_radio=False)])
+    return load_or_build_rate_table(f"proton_electron_pair_production_loss_on_{field_names}", energies, build)

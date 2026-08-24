@@ -19,4 +19,5 @@ def rate_table(energies_ev: np.ndarray) -> TabulatedRate:
             total += electromagnetic_rate_per_mpc(energies, field, "double_pair")
         return total
 
-    return load_or_build_rate_table("photon_double_pair_production", energies, build)
+    field_names = "_".join([f.name for f in selected_photon_fields()])
+    return load_or_build_rate_table(f"photon_double_pair_production_on_{field_names}", energies, build)

@@ -60,4 +60,5 @@ def rate_table(energies_ev: np.ndarray) -> TabulatedRate:
             total += interaction_rate.calc_rate_eps(rest_frame_energy_j, cross_section_m2, gamma, field)
         return total
 
-    return load_or_build_rate_table("proton_photopion_full_table", energies, build)
+    field_names = "_".join([f.name for f in selected_photon_fields(include_radio=True)])
+    return load_or_build_rate_table(f"proton_photopion_extended_on_{field_names}", energies, build)

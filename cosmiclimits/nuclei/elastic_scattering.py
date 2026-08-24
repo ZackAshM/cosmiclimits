@@ -48,4 +48,5 @@ def rate_table(energies_ev: np.ndarray) -> TabulatedRate:
             total += interaction_rate.calc_rate_eps(rest_frame_energy_j, cross_section_m2, gamma, field)
         return total
 
-    return load_or_build_rate_table("iron_elastic_scattering_fe56", energies, build)
+    field_names = "_".join([f.name for f in selected_photon_fields(include_radio=True)])
+    return load_or_build_rate_table(f"iron_elastic_scattering_fe56_{field_names}", energies, build)
