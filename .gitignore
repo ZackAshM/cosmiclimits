@@ -11,5 +11,5 @@ __pycache__/
 data/generated_tables/*
 !data/generated_tables/.gitkeep
 output/*.csv
-output/versions/*old.png
+output/versions/
 .source_papers/
