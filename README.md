@@ -17,17 +17,17 @@ The particle-horizon definitions used here follow Ruffini, Vereshchagin, and Xue
 
 A particle horizon is defined by the condition that the accumulated optical depth reaches unity for a particle propagating through cosmological background radiation fields:
 
-$$\tau = 1$$
+$$\tau = 1 ~.$$
 
 Without cosmological redshift evolution, the horizon is equivalent to the particle’s mean free path.
 
-$$\lambda(E) = \frac{1}{\sigma(E)\,n}$$
+$$\lambda(E) = \frac{1}{\sigma(E)~n} ~,$$
 
 or, equivalently for the CRPropa-derived local interaction rates used here,
 
-$$\lambda(E) = \frac{1}{\Gamma_0(E)}$$
+$$\lambda(E) = \frac{1}{\Gamma_0(E)} ~,$$
 
-where $\Gamma_0(E)$ is the local $z = 0$ interaction rate in units of `Mpc⁻¹`.
+where $\Gamma_0(E)$ is the local $z = 0$ interaction rate in units of `Mpc^-1`.
 
 ### Including Cosmological Redshift Evolution
 
@@ -37,52 +37,27 @@ $$\tau(E_0, z_h) = 1~,$$
 
 now with an optical-depth integral of the form
 
-$$
-\tau(E_0, z_h)
-=
-\int_0^{z_h}
-\Gamma\!\left(E_0(1+z')^2\right)
-(1+z')^3
-\frac{D_H\,dz'}{(1+z')\,\mathcal{H}(z')}
-$$
+$$\tau(E_0, z_h) =\int_0^{z_h}\Gamma \left( E_0(1+z')^2\right) (1+z')^3\frac{D_H~dz'}{(1+z')~\mathcal{H}(z')} ~,$$
 
 where $E_0$ is the particle energy observed today, $D_H = c/H_0$, and
 
-$$\mathcal{H}(z) = [\Omega_r(1+z)^4 + \Omega_M(1+z)^3 + \Omega_\Lambda]^{1/2}$$
+$$\mathcal{H}(z) = [\Omega_r(1+z)^4 + \Omega_M(1+z)^3 + \Omega_\Lambda]^{1/2} ~.$$
 
 In this implementation, $\Gamma(E)$ is evaluated from local CRPropa rate tables and scaled by the background-density factor $(1+z)^3$; the shifted argument $E_0(1+z')^2$ reflects the combined redshifting of the propagating particle and background energy scales.
 
 For the neutrino horizon, Ruffini et al. use the CνB number-density scaling and the at-rest CνB approximation,
 
-$$
-\tau_{\nu\bar{\nu}}(E_0,z_h)
-=
-n_{0,\nu}D_H
-\int_0^{z_h}
-\sigma_{\nu\bar{\nu}}\!\left(E_0(1+z')\right)
-\frac{(1+z')^2\,dz'}{\mathcal{H}(z')}.
-$$
+$$\tau_{\nu\bar{\nu}}(E_0,z_h)=n_{0,\nu}D_H\int_0^{z_h}\sigma_{\nu\bar{\nu}}\left( E_0(1+z')\right)\frac{(1+z')^2dz'}{\mathcal{H}(z')} ~.$$
 
 This differs from the CRPropa photon/proton/nuclei scaling because the target is the relic neutrino background and the Ruffini implementation evaluates the beam energy as $E'=E_0(1+z')$.
 
 For interactions where the primary particle is not annihilated and does not lose a significant fraction of its energy in a single interaction, the mean free path is not itself the appropriate horizon scale. Ruffini et al. instead define a mean energy-loss distance,
 
-$$
-\tilde{\lambda}^{-1} = \frac{1}{E} \frac{dE}{c\,dt},
-$$
+$$\tilde{\lambda}^{-1} = \frac{1}{E} \frac{dE}{c ~ dt} ~,$$
 
 and the corresponding accumulated energy-loss depth,
 
-$$
-\tilde{\tau}
-=
-\int_0^t
-\frac{c\,dt'}{\tilde{\lambda}}
-=
-D_H
-\int_0^z
-\frac{dz'}{\tilde{\lambda}(z')\,(1+z')\,\mathcal{H}(z')}.
-$$
+$$\tilde{\tau}=\int_0^t\frac{c ~ dt'}{\tilde{\lambda}}=D_H\int_0^z\frac{dz'}{\tilde{\lambda}(z')(1+z')\mathcal{H}(z')} ~.$$
 
 
 ## Contributing Physics Processes
@@ -137,7 +112,7 @@ The neutrino curve is shown only in the redshift plot. It follows Ruffini et al.
 Clone the repository with its CRPropa3-data submodule:
 
 ```bash
-git clone --recurse-submodules <repo-url>
+git clone --recurse-submodules https://github.com/ZackAshM/cosmiclimits/
 cd cosmiclimits
 ```
 
