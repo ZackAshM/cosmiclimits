@@ -13,3 +13,5 @@ data/generated_tables/*
 output/*.csv
 output/versions/
 .source_papers/
+scripts/*
+!scripts/plot.py

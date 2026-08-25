@@ -29,6 +29,15 @@ def cumulative_observable_distance_mpc(redshift_grid: np.ndarray) -> np.ndarray:
     return cumulative_trapezoid(integrand, redshift_grid, initial=0.0)
 
 
+def cumulative_comoving_distance_mpc(redshift_grid: np.ndarray) -> np.ndarray:
+    '''
+    Convert redshift samples to line-of-sight comoving distance in Mpc.
+    Source: Eq. 14 of Hogg, "Distance measures in cosmology", arXiv:astro-ph/9905116, https://ned.ipac.caltech.edu/level5/Hogg/Hogg4.html
+    '''
+    integrand = D_H_MPC / e_z(redshift_grid)
+    return cumulative_trapezoid(integrand, redshift_grid, initial=0.0)
+
+
 def horizon_redshift(
     observed_energy_ev: float,
     rate: TabulatedRate,

@@ -17,9 +17,15 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.lines import Line2D
+from matplotlib.ticker import MultipleLocator
 
 from data.crpropa_runtime import ensure_crpropa_data_path
-from cosmiclimits.horizon import cumulative_observable_distance_mpc, horizon_redshift, make_redshift_grid
+from cosmiclimits.horizon import (
+    cumulative_comoving_distance_mpc,
+    cumulative_observable_distance_mpc,
+    horizon_redshift,
+    make_redshift_grid,
+)
 from cosmiclimits.neutrino.cnb_absorption import horizon_redshift as neutrino_horizon_redshift
 from cosmiclimits.neutrino.neutrino_constants import (
     NEUTRINO_ENERGY_MAX_EV,
@@ -39,8 +45,20 @@ from cosmiclimits.utils import TabulatedRate, static_length_mpc
 LABEL_BOX = {"facecolor": "white", "edgecolor": "none", "alpha": 0.68, "pad": 2.0}
 AXIS_LABEL_SIZE = 15
 TICK_LABEL_SIZE = 12
+MAJOR_TICK_LENGTH = 7.0
+MINOR_TICK_LENGTH = 4.0
 TITLE_SIZE = 18
+PLOT_TITLE = "Horizons in Particle Observations"
 LEGEND_SIZE = 12.5
+LEGEND_TITLE = "Attenuation Processes"
+REDSHIFT_TITLE_DISTANCE_EXTRA_HEIGHT = 0.47
+
+# Standard single-panel figure size used by canonical plots.
+FIGURE_SIZE = (8.7, 7.4)
+
+# Default displayed Mpc-distance convention. "comoving" is used for source-separation intuition.
+# Other accepted options are "traveldistance" and "pathlength", both using c dt path length.
+DEFAULT_DISTANCE_MODE = "comoving"
 STATIC_LINESTYLE = '-.'
 IRON_COLOR = "darkorange"
 IRON_FILL_ALPHA = 0.05
@@ -94,7 +112,28 @@ def comparison_horizon_envelope(
     return envelope
 
 
-def compute_curves() -> dict[str, np.ndarray]:
+def cumulative_display_distance_mpc(
+    redshift_grid: np.ndarray,
+    distance_mode: str = DEFAULT_DISTANCE_MODE,
+) -> np.ndarray:
+    '''
+    Convert redshift samples to the selected plotted distance convention.
+    '''
+    # "comoving" gives the present-day source-separation distance commonly used for horizons.
+    # "traveldistance" and "pathlength" preserve the earlier c dt propagation-distance view.
+    distance_functions = {
+        "comoving": cumulative_comoving_distance_mpc,
+        "traveldistance": cumulative_observable_distance_mpc,
+        "pathlength": cumulative_observable_distance_mpc,
+    }
+    if distance_mode not in distance_functions:
+        supported_modes = ", ".join(sorted(distance_functions))
+        raise ValueError(f"Unsupported distance mode: {distance_mode}. Use one of: {supported_modes}")
+    return distance_functions[distance_mode](redshift_grid)
+
+
+def compute_curves(distance_mode: str = DEFAULT_DISTANCE_MODE) -> dict[str, np.ndarray]:
+    # distance_mode affects only the Mpc-valued output coordinates, not the optical-depth calculation.
     print("checking CRPropa3-data runtime", flush=True)
     ensure_crpropa_data_path()
 
@@ -123,9 +162,9 @@ def compute_curves() -> dict[str, np.ndarray]:
     iron_total = combine_rates(iron_photodisintegration, iron_elastic)
 
     z_grid = make_redshift_grid(40.0, count=1000)
-    distance_grid = cumulative_observable_distance_mpc(z_grid)
+    distance_grid = cumulative_display_distance_mpc(z_grid, distance_mode)
     neutrino_z_grid = make_redshift_grid(NEUTRINO_Z_MAX, count=NEUTRINO_Z_SAMPLES)
-    neutrino_distance_grid = cumulative_observable_distance_mpc(neutrino_z_grid)
+    neutrino_distance_grid = cumulative_display_distance_mpc(neutrino_z_grid, distance_mode)
 
     print("solving photon total horizon", flush=True)
     photon_z = np.array(
@@ -190,11 +229,50 @@ def add_record_lines(records: list, ax: plt.Axes, label_x: float) -> None:
         )
 
 
-def plot_mpc(curves: dict[str, np.ndarray], output_path: Path) -> None:
-    fig, ax = plt.subplots(figsize=(8.7, 7.4), constrained_layout=True)
+def plot_mpc(
+    curves: dict[str, np.ndarray],
+    output_path: Path,
+
+    # Select which particle curves are shown on the Mpc plot.
+    # Supported values here are "photon", "proton", and "iron".
+    particles: tuple[str, ...] = ("photon", "proton", "iron"),
+
+    # Set plot dimensions in inches.
+    figsize: tuple[float, float] = FIGURE_SIZE,
+
+    # Toggle the gray comoving observable-universe-radius marker on the Mpc plot.
+    show_observable_universe_radius: bool = True,
+) -> None:
+    fig, ax = plt.subplots(figsize=figsize, constrained_layout=True)
     ax.set_xlim(-3.0, 4.6)
     ax.set_ylim(7.0, 25.0)
     ax.set_xticks(np.arange(-3.0, 5.0, 1.0))
+    if show_observable_universe_radius:
+        observable_universe_radius_x = np.log10(
+            cumulative_display_distance_mpc(make_redshift_grid(3000.0, count=2000))[-1]
+        )
+        ax.vlines(
+            observable_universe_radius_x,
+            7.0,
+            25.0,
+            color="gray",
+            linewidth=1.0,
+            zorder=0,
+        )
+        ax.text(
+            observable_universe_radius_x - 0.05,
+            8.5,
+            "Observable\nUniverse\nRadius",
+            color="gray",
+            fontsize=LEGEND_SIZE,
+            ha="right",
+            va="center",
+            zorder=0,
+        )
+
+    show_photon = "photon" in particles
+    show_proton = "proton" in particles
+    show_iron = "iron" in particles
 
     photon_y = np.log10(curves["photon_energy_ev"])
     proton_y = np.log10(curves["proton_energy_ev"])
@@ -209,145 +287,210 @@ def plot_mpc(curves: dict[str, np.ndarray], output_path: Path) -> None:
     proton_static_x = np.log10(np.clip(curves["proton_static_distance_mpc"], 1.0e-3, 10.0**4.6))
     iron_static_x = np.log10(np.clip(curves["iron_static_distance_mpc"], 1.0e-3, 10.0**4.6))
 
-    ax.fill_betweenx(
-        photon_y,
-        photon_x,
-        4.6,
-        facecolor="blue",
-        edgecolor="none",
-        linewidth=0.0,
-        alpha=0.04,
-    )
-    ax.fill_betweenx(
-        photon_y,
-        photon_x,
-        4.6,
-        facecolor="none",
-        hatch="/",
-        edgecolor="royalblue",
-        linewidth=0.0,
-        alpha=0.20,
-    )
-    ax.fill_betweenx(
-        proton_y,
-        proton_x,
-        4.6,
-        facecolor="red",
-        edgecolor="none",
-        linewidth=0.0,
-        alpha=0.04,
-    )
-    ax.fill_betweenx(
-        proton_y,
-        proton_x,
-        4.6,
-        facecolor="none",
-        hatch="\\",
-        edgecolor="red",
-        linewidth=0.0,
-        alpha=0.2,
-    )
-    comparison_envelope = comparison_horizon_envelope(
-        iron_y,
-        (
-#             (photon_y, photon_x),
-            (proton_y, proton_x),
-        ),
-    )
-    iron_dominant = iron_x < comparison_envelope
-    ax.fill_betweenx(
-        iron_y,
-        iron_x,
-        comparison_envelope,
-        where=iron_dominant,
-        interpolate=True,
-        facecolor=IRON_COLOR,
-        edgecolor="none",
-        linewidth=0.0,
-        alpha=IRON_FILL_ALPHA,
-    )
-    ax.fill_betweenx(
-        iron_y,
-        iron_x,
-        comparison_envelope,
-        where=iron_dominant,
-        interpolate=True,
-        facecolor="none",
-        hatch="\\",
-        edgecolor="darkorange",
-        linewidth=0.0,
-        alpha=0.2,
-    )
+    if show_photon:
+        ax.fill_betweenx(
+            photon_y,
+            photon_x,
+            4.6,
+            facecolor="blue",
+            edgecolor="none",
+            linewidth=0.0,
+            alpha=0.04,
+        )
+        ax.fill_betweenx(
+            photon_y,
+            photon_x,
+            4.6,
+            facecolor="none",
+            hatch="/",
+            edgecolor="royalblue",
+            linewidth=0.0,
+            alpha=0.20,
+        )
+    if show_proton:
+        ax.fill_betweenx(
+            proton_y,
+            proton_x,
+            4.6,
+            facecolor="red",
+            edgecolor="none",
+            linewidth=0.0,
+            alpha=0.04,
+        )
+        ax.fill_betweenx(
+            proton_y,
+            proton_x,
+            4.6,
+            facecolor="none",
+            hatch="\\",
+            edgecolor="red",
+            linewidth=0.0,
+            alpha=0.2,
+        )
+    if show_iron:
+        comparison_curves = []
+        if show_proton:
+            comparison_curves.append((proton_y, proton_x))
+        comparison_envelope = (
+            comparison_horizon_envelope(iron_y, tuple(comparison_curves))
+            if comparison_curves
+            else np.full_like(iron_y, 4.6)
+        )
+        iron_dominant = iron_x < comparison_envelope
+        ax.fill_betweenx(
+            iron_y,
+            iron_x,
+            comparison_envelope,
+            where=iron_dominant,
+            interpolate=True,
+            facecolor=IRON_COLOR,
+            edgecolor="none",
+            linewidth=0.0,
+            alpha=IRON_FILL_ALPHA,
+        )
+        ax.fill_betweenx(
+            iron_y,
+            iron_x,
+            comparison_envelope,
+            where=iron_dominant,
+            interpolate=True,
+            facecolor="none",
+            hatch="\\",
+            edgecolor="darkorange",
+            linewidth=0.0,
+            alpha=0.2,
+        )
 
-    ax.plot(
-    	photon_static_x, 
-    	photon_y, 
-    	color="blue", 
-    	linewidth=2.0, 
-    	linestyle=STATIC_LINESTYLE, 
-    	alpha=0.5,
-    )
-    ax.plot(
-        proton_static_x,
-        proton_y,
-        color="red",
-        linewidth=1.8,
-        linestyle=STATIC_LINESTYLE,
-        alpha=0.5,
-    )
-    ax.plot(
-        iron_static_x,
-        iron_y,
-        color=IRON_COLOR,
-        linewidth=1.8,
-        linestyle=STATIC_LINESTYLE,
-        alpha=0.5,
-    )
-    ax.plot(
-        photon_x,
-        photon_y,
-        color="blue",
-        linewidth=2.4,
-        label=r"$\gamma\gamma \rightarrow e^+e^-,\;\gamma\gamma \rightarrow 2(e^+e^-)$",
-    )
-    ax.plot(
-        proton_x,
-        proton_y,
-        color="red",
-        linewidth=2.4,
-        label=r"$p\gamma \rightarrow \Delta^+ \rightarrow p\pi^0 / n\pi^+$",
-    )
-    ax.plot(
-        iron_x,
-        iron_y,
-        color=IRON_COLOR,
-        linewidth=2.4,
-        linestyle=IRON_LINESTYLE,
-        label=r"$^{56}\mathrm{Fe}+\gamma \rightarrow \mathrm{fragments}$",
-    )
+    if show_photon:
+        ax.plot(
+            photon_static_x,
+            photon_y,
+            color="blue",
+            linewidth=2.0,
+            linestyle=STATIC_LINESTYLE,
+            alpha=0.5,
+        )
+        ax.plot(
+            photon_x,
+            photon_y,
+            color="blue",
+            linewidth=2.4,
+            label=r"$\gamma\gamma \rightarrow e^+e^-,\;\gamma\gamma \rightarrow 2(e^+e^-)$",
+        )
+    if show_proton:
+        ax.plot(
+            proton_static_x,
+            proton_y,
+            color="red",
+            linewidth=1.8,
+            linestyle=STATIC_LINESTYLE,
+            alpha=0.5,
+        )
+        ax.plot(
+            proton_x,
+            proton_y,
+            color="red",
+            linewidth=2.4,
+            label=r"$p\gamma \rightarrow \Delta^+ \rightarrow p\pi^0 / n\pi^+$",
+        )
+    if show_iron:
+        ax.plot(
+            iron_static_x,
+            iron_y,
+            color=IRON_COLOR,
+            linewidth=1.8,
+            linestyle=STATIC_LINESTYLE,
+            alpha=0.5,
+        )
+        ax.plot(
+            iron_x,
+            iron_y,
+            color=IRON_COLOR,
+            linewidth=2.4,
+            linestyle=IRON_LINESTYLE,
+            label=r"$^{56}\mathrm{Fe}+\gamma \rightarrow \mathrm{fragments}$",
+        )
 
-    add_record_lines([RECORDS["photon"], RECORDS["cosmicray"]], ax, label_x=3.0)
-    ax.text(3.2, 23.0, "protons", color="red", fontsize=15, ha="center", bbox=LABEL_BOX)
-    ax.text(0.5, 17.0, "photons", color="blue", fontsize=15, ha="center", bbox=LABEL_BOX)
-    ax.text(-0.5, 21.3, "iron", color="darkorange", fontsize=15, ha="center", bbox=LABEL_BOX)
+    record_lines = []
+    if show_photon:
+        record_lines.append(RECORDS["photon"])
+    if show_proton or show_iron:
+        record_lines.append(RECORDS["cosmicray"])
+    add_record_lines(record_lines, ax, label_x=3.0)
+    if show_proton:
+        ax.text(3.2, 23.0, "protons", color="red", fontsize=15, ha="center", bbox=LABEL_BOX)
+    if show_photon:
+        ax.text(0.5, 17.0, "photons", color="blue", fontsize=15, ha="center", bbox=LABEL_BOX)
+    if show_iron:
+        ax.text(-0.5, 21.3, "iron", color="darkorange", fontsize=15, ha="center", bbox=LABEL_BOX)
 
     ax.set_xlabel(r"$\log_{10}$(Observable distance / Mpc)", fontsize=AXIS_LABEL_SIZE)
     ax.set_ylabel(r"$\log_{10}$(particle energy / eV)", fontsize=AXIS_LABEL_SIZE)
-    ax.set_title("Particle Horizon Limits", fontsize=TITLE_SIZE)
-    ax.tick_params(which="both", direction="in", top=True, right=True, labelsize=TICK_LABEL_SIZE)
+    ax.set_title(PLOT_TITLE, fontsize=TITLE_SIZE)
+    ax.tick_params(
+        which="major",
+        direction="inout",
+        top=True,
+        right=True,
+        labelsize=TICK_LABEL_SIZE,
+        length=MAJOR_TICK_LENGTH,
+    )
+    ax.tick_params(
+        which="minor",
+        direction="inout",
+        top=True,
+        right=True,
+        length=MINOR_TICK_LENGTH,
+    )
     handles, labels = ax.get_legend_handles_labels()
     handles.append(Line2D([0], [0], color="black", linewidth=2.0, linestyle=STATIC_LINESTYLE))
     labels.append("No Redshift Evolution")
-    ax.legend(handles, labels, loc="lower left", fontsize=LEGEND_SIZE, framealpha=0.82, facecolor="white", edgecolor="none")
+    ax.legend(
+        handles,
+        labels,
+        loc="lower left",
+        fontsize=LEGEND_SIZE,
+        title=LEGEND_TITLE,
+        title_fontsize=LEGEND_SIZE,
+        framealpha=0.82,
+        facecolor="white",
+        edgecolor="none",
+    )
     fig.savefig(output_path, dpi=220)
     plt.close(fig)
 
 
-def plot_redshift(curves: dict[str, np.ndarray], output_path: Path) -> None:
-    fig, ax = plt.subplots(figsize=(8.7, 7.4), constrained_layout=True)
+def plot_redshift(
+    curves: dict[str, np.ndarray],
+    output_path: Path,
+
+    # Select which particle curves are shown on the redshift plot.
+    # Supported values here are "photon", "proton", "iron", and "neutrino".
+    particles: tuple[str, ...] = ("photon", "proton", "iron", "neutrino"),
+
+    # Set plot dimensions in inches.
+    figsize: tuple[float, float] = FIGURE_SIZE,
+
+    # Toggle the title on redshift outputs; the canonical redshift plot leaves it off for top-axis space.
+    show_title: bool = False,
+
+    # Toggle the top shared observable-distance axis.
+    show_distance_axis: bool = True,
+
+    # Select which distance convention is used for the top observable-distance axis.
+    distance_mode: str = DEFAULT_DISTANCE_MODE,
+) -> None:
+    if show_title and show_distance_axis:
+        figsize = (figsize[0], figsize[1] + REDSHIFT_TITLE_DISTANCE_EXTRA_HEIGHT)
+    fig, ax = plt.subplots(figsize=figsize, constrained_layout=True)
     ax.set_xlim(-8.0, 4.0)
     ax.set_ylim(7.0, 25.0)
     ax.set_xticks(np.arange(-8.0, 5.0, 2.0))
+
+    show_photon = "photon" in particles
+    show_proton = "proton" in particles
+    show_iron = "iron" in particles
+    show_neutrino = "neutrino" in particles
 
     photon_y = np.log10(curves["photon_energy_ev"])
     proton_y = np.log10(curves["proton_energy_ev"])
@@ -358,138 +501,244 @@ def plot_redshift(curves: dict[str, np.ndarray], output_path: Path) -> None:
     iron_x = np.log10(np.clip(curves["iron_z"], 1.0e-7, 10.0**4.0))
     neutrino_x = np.log10(np.clip(curves["neutrino_z"], 1.0e-7, 10.0**4.0))
 
-    ax.fill_betweenx(
-        photon_y,
-        photon_x,
-        4.0,
-        facecolor="blue",
-        edgecolor="none",
-        linewidth=0.0,
-        alpha=0.04,
-    )
-    ax.fill_betweenx(
-        photon_y,
-        photon_x,
-        4.0,
-        facecolor="none",
-        hatch="/",
-        edgecolor="royalblue",
-        linewidth=0.0,
-        alpha=0.3,
-    )
-    ax.fill_betweenx(
-        proton_y,
-        proton_x,
-        4.0,
-        facecolor="red",
-        edgecolor="none",
-        linewidth=0.0,
-        alpha=0.04,
-    )
-    ax.fill_betweenx(
-        proton_y,
-        proton_x,
-        4.0,
-        facecolor="none",
-        hatch="\\",
-        edgecolor="red",
-        linewidth=0.0,
-        alpha=0.2,
-    )
-    comparison_envelope = comparison_horizon_envelope(
-        iron_y,
-        (
-#             (photon_y, photon_x),
-            (proton_y, proton_x),
-        ),
-    )
-    iron_dominant = iron_x < comparison_envelope
-    ax.fill_betweenx(
-        iron_y,
-        iron_x,
-        comparison_envelope,
-        where=iron_dominant,
-        interpolate=True,
-        facecolor=IRON_COLOR,
-        edgecolor="none",
-        linewidth=0.0,
-        alpha=IRON_FILL_ALPHA,
-    )
-    ax.fill_betweenx(
-        iron_y,
-        iron_x,
-        comparison_envelope,
-        where=iron_dominant,
-        interpolate=True,
-        facecolor="none",
-        hatch="\\",
-        edgecolor="darkorange",
-        linewidth=0.0,
-        alpha=0.2,
-    )
-    ax.fill_betweenx(
-        neutrino_y,
-        neutrino_x,
-        4.0,
-        facecolor=NEUTRINO_COLOR,
-        edgecolor="none",
-        linewidth=0.0,
-        alpha=NEUTRINO_FILL_ALPHA,
-    )
-    ax.fill_betweenx(
-        neutrino_y,
-        neutrino_x,
-        4.0,
-        facecolor="none",
-        hatch="|",
-        edgecolor=NEUTRINO_COLOR,
-        linewidth=0.0,
-        alpha=0.24,
-    )
-    ax.plot(
-        photon_x,
-        photon_y,
-        color="blue",
-        linewidth=2.3,
-        label=r"$\gamma\gamma \rightarrow e^+e^-,\;\gamma\gamma \rightarrow 2(e^+e^-)$",
-    )
-    ax.plot(
-        proton_x,
-        proton_y,
-        color="red",
-        linewidth=2.3,
-        label=r"$p\gamma \rightarrow \Delta^+ \rightarrow p\pi^0 / n\pi^+$",
-    )
-    ax.plot(
-        iron_x,
-        iron_y,
-        color=IRON_COLOR,
-        linewidth=2.3,
-        linestyle=IRON_LINESTYLE,
-        label=r"$^{56}\mathrm{Fe}+\gamma \rightarrow \mathrm{fragments}$",
-    )
-    ax.plot(
-        neutrino_x,
-        neutrino_y,
-        color=NEUTRINO_COLOR,
-        linewidth=2.3,
-        label=r"$\nu\bar{\nu} \rightarrow Z^0 \rightarrow f\bar{f}$",
-    )
+    if show_photon:
+        ax.fill_betweenx(
+            photon_y,
+            photon_x,
+            4.0,
+            facecolor="blue",
+            edgecolor="none",
+            linewidth=0.0,
+            alpha=0.04,
+        )
+        ax.fill_betweenx(
+            photon_y,
+            photon_x,
+            4.0,
+            facecolor="none",
+            hatch="/",
+            edgecolor="royalblue",
+            linewidth=0.0,
+            alpha=0.3,
+        )
+    if show_proton:
+        ax.fill_betweenx(
+            proton_y,
+            proton_x,
+            4.0,
+            facecolor="red",
+            edgecolor="none",
+            linewidth=0.0,
+            alpha=0.04,
+        )
+        ax.fill_betweenx(
+            proton_y,
+            proton_x,
+            4.0,
+            facecolor="none",
+            hatch="\\",
+            edgecolor="red",
+            linewidth=0.0,
+            alpha=0.2,
+        )
+    if show_iron:
+        comparison_curves = []
+        if show_proton:
+            comparison_curves.append((proton_y, proton_x))
+        comparison_envelope = (
+            comparison_horizon_envelope(iron_y, tuple(comparison_curves))
+            if comparison_curves
+            else np.full_like(iron_y, 4.0)
+        )
+        iron_dominant = iron_x < comparison_envelope
+        ax.fill_betweenx(
+            iron_y,
+            iron_x,
+            comparison_envelope,
+            where=iron_dominant,
+            interpolate=True,
+            facecolor=IRON_COLOR,
+            edgecolor="none",
+            linewidth=0.0,
+            alpha=IRON_FILL_ALPHA,
+        )
+        ax.fill_betweenx(
+            iron_y,
+            iron_x,
+            comparison_envelope,
+            where=iron_dominant,
+            interpolate=True,
+            facecolor="none",
+            hatch="\\",
+            edgecolor="darkorange",
+            linewidth=0.0,
+            alpha=0.2,
+        )
+    if show_neutrino:
+        ax.fill_betweenx(
+            neutrino_y,
+            neutrino_x,
+            4.0,
+            facecolor=NEUTRINO_COLOR,
+            edgecolor="none",
+            linewidth=0.0,
+            alpha=NEUTRINO_FILL_ALPHA,
+        )
+        ax.fill_betweenx(
+            neutrino_y,
+            neutrino_x,
+            4.0,
+            facecolor="none",
+            hatch="|",
+            edgecolor=NEUTRINO_COLOR,
+            linewidth=0.0,
+            alpha=0.24,
+        )
+    if show_photon:
+        ax.plot(
+            photon_x,
+            photon_y,
+            color="blue",
+            linewidth=2.3,
+            label=r"$\gamma\gamma \rightarrow e^+e^-,\;\gamma\gamma \rightarrow 2(e^+e^-)$",
+        )
+    if show_proton:
+        ax.plot(
+            proton_x,
+            proton_y,
+            color="red",
+            linewidth=2.3,
+            label=r"$p\gamma \rightarrow \Delta^+ \rightarrow p\pi^0 / n\pi^+$",
+        )
+    if show_iron:
+        ax.plot(
+            iron_x,
+            iron_y,
+            color=IRON_COLOR,
+            linewidth=2.3,
+            linestyle=IRON_LINESTYLE,
+            label=r"$^{56}\mathrm{Fe}+\gamma \rightarrow \mathrm{fragments}$",
+        )
+    if show_neutrino:
+        ax.plot(
+            neutrino_x,
+            neutrino_y,
+            color=NEUTRINO_COLOR,
+            linewidth=2.3,
+            label=r"$\nu\bar{\nu} \rightarrow Z^0 \rightarrow f\bar{f}$",
+        )
 
-    add_record_lines([RECORDS["photon"], RECORDS["cosmicray"]], ax, label_x=-0.5)
-    add_record_lines([RECORDS["neutrino"]], ax, label_x=2.0)
-    ax.text(-3.7, 16.2, "photons", color="blue", fontsize=15, ha="center", bbox=LABEL_BOX)
-    ax.text(-0.5, 23.0, "protons", color="red", fontsize=15, ha="center", bbox=LABEL_BOX)
-    ax.text(-4.1, 21.3, "iron", color="darkorange", fontsize=15, ha="center", bbox=LABEL_BOX)
-    ax.text(2.6, 21.5, "neutrinos", color=NEUTRINO_COLOR, fontsize=15, ha="center", bbox=LABEL_BOX)
+    record_lines = []
+    if show_photon:
+        record_lines.append(RECORDS["photon"])
+    if show_proton or show_iron:
+        record_lines.append(RECORDS["cosmicray"])
+    add_record_lines(record_lines, ax, label_x=-0.5)
+    if show_neutrino:
+        add_record_lines([RECORDS["neutrino"]], ax, label_x=2.0)
+    if show_photon:
+        ax.text(-3.7, 16.2, "photons", color="blue", fontsize=15, ha="center", bbox=LABEL_BOX)
+    if show_proton:
+        ax.text(-0.5, 23.0, "protons", color="red", fontsize=15, ha="center", bbox=LABEL_BOX)
+    if show_iron:
+        ax.text(-4.1, 21.3, "iron", color="darkorange", fontsize=15, ha="center", bbox=LABEL_BOX)
+    if show_neutrino:
+        ax.text(2.6, 21.5, "neutrinos", color=NEUTRINO_COLOR, fontsize=15, ha="center", bbox=LABEL_BOX)
 
     ax.set_xlabel(r"$\log_{10}$(Source redshift)", fontsize=AXIS_LABEL_SIZE)
     ax.set_ylabel(r"$\log_{10}$(particle energy / eV)", fontsize=AXIS_LABEL_SIZE)
-    ax.set_title("Particle Horizon Limits", fontsize=TITLE_SIZE)
-    ax.tick_params(which="both", direction="in", top=True, right=True, labelsize=TICK_LABEL_SIZE)
-    ax.legend(loc="lower left", fontsize=LEGEND_SIZE, framealpha=0.82, facecolor="white", edgecolor="none")
+    title_text = None
+    if show_title:
+        if show_distance_axis:
+            title_text = ax.set_title(PLOT_TITLE, fontsize=TITLE_SIZE, pad=20.0)
+        else:
+            title_text = ax.set_title(PLOT_TITLE, fontsize=TITLE_SIZE)
+    if show_distance_axis:
+        add_observable_distance_axis(ax, distance_mode=distance_mode)
+    if title_text is not None and show_distance_axis:
+        fig.canvas.draw()
+        title_bbox = title_text.get_window_extent(renderer=fig.canvas.get_renderer())
+        title_bbox = title_bbox.transformed(fig.transFigure.inverted())
+        underline_y = title_bbox.y0 - 0.004
+        fig.add_artist(
+            Line2D(
+                [title_bbox.x0, title_bbox.x1],
+                [underline_y, underline_y],
+                transform=fig.transFigure,
+                color="black",
+                linewidth=1.0,
+                solid_capstyle="butt",
+                clip_on=False,
+            )
+        )
+    ax.tick_params(
+        which="major",
+        direction="inout",
+        top=not show_distance_axis,
+        right=True,
+        labelsize=TICK_LABEL_SIZE,
+        length=MAJOR_TICK_LENGTH,
+    )
+    ax.tick_params(
+        which="minor",
+        direction="inout",
+        top=not show_distance_axis,
+        right=True,
+        length=MINOR_TICK_LENGTH,
+    )
+    ax.legend(
+        loc="lower left",
+        fontsize=LEGEND_SIZE,
+        title=LEGEND_TITLE,
+        title_fontsize=LEGEND_SIZE,
+        framealpha=0.82,
+        facecolor="white",
+        edgecolor="none",
+    )
     fig.savefig(output_path, dpi=220)
     plt.close(fig)
+
+
+def add_observable_distance_axis(
+    ax: plt.Axes,
+
+    # Use the same distance-mode choices as compute_curves for the secondary top axis.
+    distance_mode: str = DEFAULT_DISTANCE_MODE,
+) -> None:
+    '''
+    Add a top axis mapping source redshift to accumulated observable distance.
+    '''
+    axis_redshift = np.concatenate(([0.0], np.logspace(-8.0, 4.0, 5000)))
+    axis_distance_mpc = cumulative_display_distance_mpc(axis_redshift, distance_mode)
+    positive_redshift = axis_redshift[1:]
+    positive_distance_mpc = axis_distance_mpc[1:]
+    log_redshift = np.log10(positive_redshift)
+    log_distance = np.log10(positive_distance_mpc)
+
+    def redshift_to_distance(bottom_x: np.ndarray | float) -> np.ndarray:
+        requested = np.asarray(bottom_x, dtype=float)
+        return np.interp(requested, log_redshift, log_distance)
+
+    def distance_to_redshift(top_x: np.ndarray | float) -> np.ndarray:
+        requested = np.asarray(top_x, dtype=float)
+        clipped = np.clip(requested, log_distance[0], log_distance[-1])
+        return np.interp(clipped, log_distance, log_redshift)
+
+    top_axis = ax.secondary_xaxis("top", functions=(redshift_to_distance, distance_to_redshift))
+    top_axis.set_xlabel(r"$\log_{10}$(Observable distance / Mpc)", fontsize=AXIS_LABEL_SIZE)
+    top_axis.set_xticks([-4.0, -3.0, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0, 4.0])
+    top_axis.xaxis.set_minor_locator(MultipleLocator(0.1))
+    top_axis.tick_params(
+        which="major",
+        direction="inout",
+        labelsize=TICK_LABEL_SIZE,
+        length=MAJOR_TICK_LENGTH,
+    )
+    top_axis.tick_params(
+        which="minor",
+        direction="inout",
+        length=MINOR_TICK_LENGTH,
+    )
 
 
 def write_curve_table(curves: dict[str, np.ndarray], output_path: Path) -> None:
@@ -532,8 +781,15 @@ def main() -> None:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     print("plotting distance figure", flush=True)
     plot_mpc(curves, OUTPUT_DIR / "cosmic_limits_mpc.png")
-    print("plotting redshift figure", flush=True)
-    plot_redshift(curves, OUTPUT_DIR / "cosmic_limits_redshift.png")
+    print("plotting combined redshift/distance figure", flush=True)
+    plot_redshift(curves, OUTPUT_DIR / "cosmic_limits.png", show_title=True)
+    print("plotting redshift-only figure", flush=True)
+    plot_redshift(
+        curves,
+        OUTPUT_DIR / "cosmic_limits_redshift.png",
+        show_title=True,
+        show_distance_axis=False,
+    )
     print("writing curve table", flush=True)
     write_curve_table(curves, OUTPUT_DIR / "computed_horizons.csv")
 

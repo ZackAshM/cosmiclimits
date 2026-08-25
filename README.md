@@ -2,8 +2,7 @@
 
 <table>
   <tr>
-    <td><img src="output/cosmic_limits_mpc.png" alt="Particle horizon limits by observable distance" width="100%"></td>
-    <td><img src="output/cosmic_limits_redshift.png" alt="Particle horizon limits by source redshift" width="100%"></td>
+    <td><img src="output/cosmic_limits.png" alt="Particle horizon limits by observable distance" width="100%"></td>
   </tr>
 </table>
 
@@ -11,11 +10,11 @@ This package creates plots for cosmic propagation limits, or horizons, from part
 
 The physics backend for photon and cosmic-ray processes is built from [CRPropa3-data](https://github.com/CRPropa/CRPropa3-data). Neutrino absorption is implemented separately from the analytic approximation used by [Ruffini, Vereshchagin, and Xue](https://arxiv.org/pdf/1503.07749), following [Lunardini, Sabancilar, and Yang](https://arxiv.org/pdf/1306.1808) for the underlying CνB absorption formalism.
 
-## Defining Particle Horizons
+## Defining "Horizons in Particle Observations"
 
-The particle-horizon definitions used here follow Ruffini, Vereshchagin, and Xue, *Cosmic absorption of ultra high energy particles*, Astrophys. Space Sci. 361, 82 (2016), Secs. 3–4, https://arxiv.org/pdf/1503.07749. 
+The horizon calculations used here follow Ruffini, Vereshchagin, and Xue, *Cosmic absorption of ultra high energy particles*, Astrophys. Space Sci. 361, 82 (2016), Secs. 3–4, https://arxiv.org/pdf/1503.07749.
 
-A particle horizon is defined by the condition that the accumulated optical depth reaches unity for a particle propagating through cosmological background radiation fields:
+A horizon is defined by the condition that the accumulated optical depth reaches unity for a particle propagating through cosmological background radiation fields:
 
 $$\tau = 1 ~.$$
 
@@ -60,6 +59,12 @@ and the corresponding accumulated energy-loss depth,
 $$\tilde{\tau}=\int_0^t\frac{c ~ dt'}{\tilde{\lambda}}=D_H\int_0^z\frac{dz'}{\tilde{\lambda}(z')(1+z')\mathcal{H}(z')} ~.$$
 
 
+#### - A Note on the Distance Axis -
+Thses calculations use travelled pathlengths of the particle, which give horizons in the particle-frame interpreted as “how much distance can this particle travel before sufficient energy-loss?"
+
+We instead plot the horizons according to the corresponding cosmological co-moving distance. This interprets the horizon as the “how far in the universe can be probed by observing a particular particle?"
+
+
 ## Contributing Physics Processes
 
 ### Photons
@@ -93,7 +98,7 @@ The neutrino curve is shown only in the redshift plot. It follows Ruffini et al.
 ## Model Choices
 
 - CRPropa data source: local checkout of `CRPropa3-data`.
-- Photon backgrounds: `CMB`, `EBL_Saldana21`, and `URB_Fixsen11`.
+- Photon backgrounds: `CMB`, `EBL_Saldana21`, and `URB_Nitu21`.
 - Photon interaction grid: CRPropa electromagnetic cross sections sampled on a `2^18 + 1` Romberg grid, with a field-aware upper `s_kin` bound that extends beyond CRPropa's default to energy range to `10^25 eV`.
 - Proton photopion cross section: full shipped `tables/PPP/xs_proton.txt` table, regridded to `2^12 + 1` log-spaced samples for CRPropa's Romberg integration.
 - Iron nucleus: Fe-56 uses CRPropa3-data TALYS photodisintegration and elastic-scattering tables.
