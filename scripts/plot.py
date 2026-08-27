@@ -391,7 +391,7 @@ def plot_mpc(
             proton_y,
             color="red",
             linewidth=2.4,
-            label=r"$p\gamma \rightarrow \Delta^+ \rightarrow p\pi^0 / n\pi^+$",
+            label=r"$p\gamma \rightarrow \Delta^+;\ \mathrm{multipion}$",
         )
     if show_iron:
         ax.plot(
@@ -608,7 +608,7 @@ def plot_redshift(
             proton_y,
             color="red",
             linewidth=2.3,
-            label=r"$p\gamma \rightarrow \Delta^+ \rightarrow p\pi^0 / n\pi^+$",
+            label=r"$p\gamma \rightarrow \Delta^+;\ \mathrm{multipion}$",
         )
     if show_iron:
         ax.plot(
@@ -625,7 +625,7 @@ def plot_redshift(
             neutrino_y,
             color=NEUTRINO_COLOR,
             linewidth=2.3,
-            label=r"$\nu\bar{\nu} \rightarrow Z^0 \rightarrow f\bar{f}$",
+            label=r"$\nu\bar{\nu} \rightarrow Z^0 \rightarrow f\bar{f}$; non-resonant $\nu$-C$\nu$B",
         )
 
     record_lines = []
@@ -686,15 +686,19 @@ def plot_redshift(
         right=True,
         length=MINOR_TICK_LENGTH,
     )
-    ax.legend(
-        loc="lower left",
-        fontsize=LEGEND_SIZE,
-        title=LEGEND_TITLE,
-        title_fontsize=LEGEND_SIZE,
-        framealpha=0.82,
-        facecolor="white",
-        edgecolor="none",
-    )
+    handles, labels = ax.get_legend_handles_labels()
+    if handles:
+        ax.legend(
+            handles,
+            labels,
+            loc="lower left",
+            fontsize=LEGEND_SIZE,
+            title=LEGEND_TITLE,
+            title_fontsize=LEGEND_SIZE,
+            framealpha=0.82,
+            facecolor="white",
+            edgecolor="none",
+        )
     fig.savefig(output_path, dpi=220)
     plt.close(fig)
 
